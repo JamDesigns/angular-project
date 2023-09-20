@@ -1,0 +1,8 @@
+img {
+  max-height: 50px;
+}
+
+.list-group-item,
+.list-group-item-text {
+  margin-bottom: 8px !important;
+}
