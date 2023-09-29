@@ -1,43 +1,36 @@
-// Antes
-//
-// import { Injectable } from '@angular/core';
-// import {
-//   ActivatedRouteSnapshot,
-//   Resolve,
-//   RouterStateSnapshot,
-// } from '@angular/router';
-
-// import { Recipe } from './recipe.model';
-// import { DataStorageService } from '../shared/data-storage.service';
-
-// @Injectable({
-//   providedIn: 'root',
-// })
-// export class RecipesResolverService implements Resolve<Recipe[]> {
-//   constructor(private dataStorageService: DataStorageService) {}
-
-//   resolve(route: ActivatedRouteSnapshot, state: RouterStateSnapshot) {
-//     return this.dataStorageService.fetchRecipes();
-//   }
-// }
-
 import { inject } from '@angular/core';
 import {
   ActivatedRouteSnapshot,
   ResolveFn,
   RouterStateSnapshot,
 } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, map, of, switchMap, take } from 'rxjs';
+import { Store } from '@ngrx/store';
+import { Actions, ofType } from '@ngrx/effects';
 
 import { Recipe } from './recipe.model';
-import { DataStorageService } from '../shared/data-storage.service';
-import { RecipeService } from './recipe.service';
+import * as fromApp from '../store/app.reducer';
+import * as RecipesActions from './store/recipe.actions';
 
 export const RecipesResolverService: ResolveFn<Recipe[]> = (
   route: ActivatedRouteSnapshot,
-  state: RouterStateSnapshot,
-  dataStorageService: DataStorageService = inject(DataStorageService),
-  recipeService: RecipeService = inject(RecipeService)
+  state: RouterStateSnapshot
 ): Observable<Recipe[]> => {
-  return dataStorageService.fetchRecipes();
+  const store = inject(Store<fromApp.AppState>);
+  const actions$ = inject(Actions);
+
+  return store.select('recipes').pipe(
+    take(1),
+    map((recipesState) => {
+      return recipesState.recipes;
+    }),
+    switchMap((recipes) => {
+      if (recipes.length === 0) {
+        store.dispatch(new RecipesActions.FetchRecipes());
+        return actions$.pipe(ofType(RecipesActions.SET_RECIPES), take(1));
+      } else {
+        return of(recipes);
+      }
+    })
+  );
 };
